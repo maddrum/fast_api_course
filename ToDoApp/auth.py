@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 
 import models
 from data_validators import CreateUser, LoginUser
@@ -44,6 +44,19 @@ def create_access_token(username: str, user_id: int, expires_delta: Optional[tim
         expire = datetime.utcnow() + timedelta(minutes=15)
     encode = {'sub': username, 'id': user_id, 'exp': expire}
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def get_current_user(token: str = Depends(oauth2_bearer)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, ALGORITHM)
+    except JWTError:
+        raise HTTPException(status_code=400, detail='Invalid token')
+
+    username = payload.get('sub')
+    user_id = payload.get('id')
+    if username is None or user_id is None:
+        raise HTTPException(status_code=400, detail='Invalid user')
+    return {'username': username, 'user_id': user_id}
 
 
 @app.post('/create/user')
