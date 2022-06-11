@@ -31,7 +31,7 @@ async def get_users_query(id: int, db: Session = Depends(models.get_db)):
 
 
 @router.post('/update-password')
-async def get_users_query(password_data: PasswordUpdate, db: Session = Depends(models.get_db),
+async def update_password(password_data: PasswordUpdate, db: Session = Depends(models.get_db),
                           user: dict = Depends(get_current_user)):
     check_user(user)
     user_obj = db.query(models.Users).filter(models.Users.id == user['user_id']).first()
@@ -40,3 +40,16 @@ async def get_users_query(password_data: PasswordUpdate, db: Session = Depends(m
     db.commit()
     user_obj = db.query(models.Users).filter(models.Users.id == user['user_id']).first()
     return user_obj
+
+
+@router.delete('/delete-user')
+async def delete_user(db: Session = Depends(models.get_db), user: dict = Depends(get_current_user)):
+    check_user(user)
+    user_obj = db.query(models.Users).filter(models.Users.id == user['user_id']).first()
+    if user_obj is None:
+        raise HTTPException(detail='No such user', status_code=404)
+
+    db.delete(user_obj)
+    db.commit()
+
+    return {'status': 'Deleted'}
