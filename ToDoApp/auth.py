@@ -1,15 +1,22 @@
-import fastapi
+from typing import Optional
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
+from jose import jwt
 
 import models
 from data_validators import CreateUser, LoginUser
 
 app = FastAPI()
 
+SECRET_KEY = '123456'
+ALGORITHM = 'HS256'
+
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl='token')
 
 
 def get_password_auth(password):
@@ -28,6 +35,15 @@ def authenticate_user(login_data, db):
     if not password_check(password=login_data.password, user_obj=user):
         return None
     return user
+
+
+def create_access_token(username: str, user_id: int, expires_delta: Optional[timedelta] = None):
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    encode = {'sub': username, 'id': user_id, 'exp': expire}
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 @app.post('/create/user')
@@ -71,7 +87,11 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Sessio
     if user is None:
         raise HTTPException(detail='User not found', status_code=400)
 
+    token_expires = timedelta(minutes=20)
+    token = create_access_token(username=user.username, user_id=user.id, expires_delta=token_expires)
+
     return {
         'status_code': 200,
         'transaction': 'success',
+        'token': token,
     }
