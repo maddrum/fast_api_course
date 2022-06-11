@@ -33,3 +33,7 @@ class CreateUser(BaseModel):
 class LoginUser(BaseModel):
     username: str
     password: str
+
+
+class PasswordUpdate(BaseModel):
+    password: str

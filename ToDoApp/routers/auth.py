@@ -1,16 +1,16 @@
+from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from jose import jwt, JWTError
 
 import models
 from data_validators import CreateUser, LoginUser
 
-app = FastAPI()
+router = APIRouter(prefix='/auth', tags=['auth'], responses={401: {'user': "Not authorized"}})
 
 SECRET_KEY = '123456'
 ALGORITHM = 'HS256'
@@ -59,7 +59,7 @@ async def get_current_user(token: str = Depends(oauth2_bearer)):
     return {'username': username, 'user_id': user_id}
 
 
-@app.post('/create/user')
+@router.post('/register')
 async def create_new_user(create_user: CreateUser, db: Session = Depends(models.get_db)):
     username_count = db.query(models.Users).filter(models.Users.username == create_user.username).count()
     if username_count != 0:
@@ -82,7 +82,7 @@ async def create_new_user(create_user: CreateUser, db: Session = Depends(models.
     }
 
 
-@app.post('/login')
+@router.post('/login')
 async def login_user(login_data: LoginUser, db: Session = Depends(models.get_db)):
     user = authenticate_user(login_data=login_data, db=db)
     if user is None:
@@ -94,7 +94,7 @@ async def login_user(login_data: LoginUser, db: Session = Depends(models.get_db)
     }
 
 
-@app.post('/token')
+@router.post('/token')
 async def get_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(models.get_db)):
     user = authenticate_user(form_data, db)
     if user is None:
